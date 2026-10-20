@@ -1,5 +1,6 @@
 import secrets
 import string
+import ipaddress
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 from urllib.parse import urlparse
@@ -51,3 +52,25 @@ def referrer_domain(ref: Optional[str]) -> str:
     if not ref:
         return "Direct"
     return urlparse(ref).netloc or "Direct"
+
+def validate_target_url(url: str, own_host: Optional[str]) -> Optional[str]:
+    """Return an error message if the URL must not be shortened, else None."""
+    if len(url) > 2048:
+        return "URL is too long (max 2048 characters)"
+
+    host = (urlparse(url).hostname or "").lower()
+    if not host:
+        return "Invalid URL"
+    if own_host and host == own_host.lower():
+        return "You can't shorten a Snipr link"
+    if host == "localhost" or host.endswith(".local"):
+        return "Local addresses can't be shortened"
+
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return None  # a normal domain name
+
+    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_unspecified:
+        return "Private IP addresses can't be shortened"
+    return None

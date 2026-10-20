@@ -23,7 +23,10 @@ import { LinkService } from '../../services/link.service';
     />
 
     <p class="error" *ngIf="error">{{ error }}</p>
-    <p class="muted" *ngIf="loading">Loading…</p>
+    <p class="muted" *ngIf="loading">
+      Loading…
+      <span *ngIf="slow">(waking up the server, this can take up to a minute)</span>
+    </p>
 
     <div class="card table-wrap" *ngIf="!loading && !error">
       <table *ngIf="filtered.length; else empty">
@@ -64,19 +67,23 @@ export class DashboardComponent implements OnInit {
   filtered: ShortLink[] = [];
   query = '';
   loading = true;
+  slow = false;
   error = '';
   copiedCode = '';
 
   constructor(private service: LinkService) {}
 
   ngOnInit() {
+    const timer = setTimeout(() => (this.slow = this.loading), 4000);
     this.service.list().subscribe({
       next: (data) => {
+        clearTimeout(timer);
         this.links = data;
         this.applyFilter();
         this.loading = false;
       },
       error: () => {
+        clearTimeout(timer);
         this.loading = false;
         this.error = 'Could not load your links. The server may be waking up, please refresh in a minute.';
       },

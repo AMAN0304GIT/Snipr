@@ -45,6 +45,9 @@ import { LinkService } from '../../services/link.service';
         </select>
       </div>
       <p class="error" *ngIf="error">{{ error }}</p>
+      <p class="muted small" *ngIf="slow">
+        Waking up the server (free hosting). This can take up to a minute…
+      </p>
     </form>
 
     <div class="card result" *ngIf="result">
@@ -80,6 +83,7 @@ export class HomeComponent {
   alias = '';
   expiresInDays: number | null = null;
   loading = false;
+  slow = false;
   error = '';
   result: ShortLink | null = null;
   copied = false;
@@ -90,6 +94,8 @@ export class HomeComponent {
     this.error = '';
     this.result = null;
     this.loading = true;
+    this.slow = false;
+    const timer = setTimeout(() => (this.slow = this.loading), 4000);
 
     this.links
       .create({
@@ -99,13 +105,17 @@ export class HomeComponent {
       })
       .subscribe({
         next: (link) => {
+          clearTimeout(timer);
           this.result = link;
           this.loading = false;
+          this.slow = false;
           this.url = '';
           this.alias = '';
         },
         error: (err) => {
+          clearTimeout(timer);
           this.loading = false;
+          this.slow = false;
           this.error = this.readError(err);
         },
       });
@@ -124,6 +134,9 @@ export class HomeComponent {
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail)) {
       return 'Please check the URL (must start with http:// or https://) and the alias (letters, numbers, - and _ only).';
+    }
+    if (err?.status === 429) {
+      return 'Too many requests. Please wait a minute and try again.';
     }
     if (err?.status === 0) {
       return 'Cannot reach the server. If it is on a free plan it may be waking up, try again in a minute.';
